@@ -79,6 +79,20 @@ def shape_of_a_totally_real_number_field(K, check = False):
                 G[j,a] = G[a,j]
     return G
 
+def trace_zero_form(K):
+    r"""
+    The projection of the trace zero form to the trace zero space, scaled so as to be integral.
+    """
+    OK = K.maximal_order()
+    B = OK.basis()
+    if B[0] != 1:
+        B = _sub_one_into_basis(OK)
+    Bperp = []
+    for a in range(1, K.absolute_degree()):
+        Bperp.append(_perp(B[a]))
+    #G = matrix(ZZ, K.absolute_degree() - 1, K.absolute_degree() - 1)
+    return K.trace_pairing(Bperp)
+
 def minkowski_vector(alpha, sigmas, taus):
     n = len(sigmas) + 2 * len(taus)
     V = AA^n
