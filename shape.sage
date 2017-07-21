@@ -98,6 +98,8 @@ def _gram_to_perp_gram(G):
     for i in range(n-1):
         for j in range(i, n-1):
             Gperp[i,j] = n^2 * Gperp[i, j] - n * G[0, i+1] * G[0, j+1]
+            if j != i:
+                Gperp[j,i] = Gperp[i,j]
     return Gperp
 
 def minkowski_vector(alpha, sigmas, taus):
