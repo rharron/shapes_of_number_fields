@@ -30,10 +30,7 @@ def shape_of_a_number_field(K, check = True):
         KK = K.absolute_field(K.variable_names()[0] * 2)
     else:
         KK = K
-    OK = KK.maximal_order()
-    B = OK.basis()
-    if B[0] != 1:
-        B = _sub_one_into_basis(OK)
+    B = [KK(aa) for aa in KK.pari_nf()[6]]
     Bperp = []
     for a in range(1, KK.absolute_degree()):
         Bperp.append(_perp(B[a]))
@@ -121,48 +118,3 @@ def BQF_to_H(Q):
     xx = G[0,1] / G[0,0]
     yy = (G[1,1] / G[0,0] - xx^2).sqrt()
     return xx + QQbar(-1).sqrt() * yy
-
-def _sub_one_into_basis(OK):
-    """
-    The integral basis function does not always return a basis containing
-    1. This function receives such a basis and modifies it by substituting
-    1 for one of the basis elements. The returned basis contains 1 as its
-    first element.
-
-    """
-    K = OK.fraction_field() #temporary
-    B = []
-    for v in OK.basis():
-        B.append(v)
-    w = OK.coordinates(OK.one())
-    sub_index = None
-    for i in range(len(w)):
-        if w[i] == 1 or w[i] == -1:
-            sub_index = i
-            break
-    if not sub_index is None:
-        B[sub_index] = B[0]
-        B[0] = OK.one()
-        #assert(K.discriminant() == K.discriminant(B))
-        return B
-
-    #Otherwise, more complicated
-    found = False
-    for i in range(len(w) - 1):
-        for j in range(i + 1, len(w)):
-            g, x, y = xgcd(w[i], w[j])
-            if g == 1:
-                found = True
-                break
-        if found:
-            break
-    if not found:    #This should never happen
-        raise ValueError("You've given me a field whose integral basis \
-                cannot contain 1!")
-
-    companion = -y * B[i] + x * B[j]
-    B[i] = B[0]
-    B[j] = companion
-    B[0] = OK.one()
-    #assert(K.discriminant() == K.discriminant(B))
-    return B
