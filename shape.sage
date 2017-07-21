@@ -1,14 +1,17 @@
+from sage.rings.number_field.number_field_base import is_NumberField
+from sage.libs.pari.convert_sage import gen_to_sage
+
 def shape_of_a_number_field(K, check = True, prec = 50):
     """
     Return the shape of the number field.
-    
+
     The shape of a number field of degree d is by definition the equivalence class of the (d-1)-dimensional lattice given by the orthogonal projection of the ring of integers of K onto the trace zero space (i.e. onto the orthogonal complement of 1) (equivalence means up to change of basis, orthogonal transformation, and homothety). The output of this function is the Gram matrix of the lattice. By default, this function checks if K is totally real or CM, in which cases it returns the Gram matrix over the rational numbers. Otherwise (or if check is set to False), a numerical approximation of the Gram matrix in RR is returned. In the latter case, the parameter prec is used for the precision of the real field. In order to provide a non-numerical answer in the general case, one would have to construct the normal closure (or at least the closure under complex conjugations). This is not practical at this time.
-    
+
     """
-    
+
     if K.absolute_degree() == 1:
         return matrix(QQ, 0)
-    
+
     if check:
         if K.is_totally_real():
             return shape_of_a_totally_real_number_field(K)
@@ -18,7 +21,7 @@ def shape_of_a_number_field(K, check = True, prec = 50):
         except(AttributeError):    #temporary: only needed if trac #11770 has not been applied
             if CM_field_functionality.is_CM(K):
                 return shape_of_a_CM_number_field(K)
-    
+
     #Otherwise do it with AA and QQbar
     if K.is_relative():
         KK = K.absolute_field(K.variable_names()[0] * 2)
@@ -55,43 +58,47 @@ def shape_of_a_number_field(K, check = True, prec = 50):
 def shape_of_a_totally_real_number_field(K, check = False):
     """
     Return the shape of the totally real number field K.
-    
+
     The shape of a totally real number field is a quadratic form over the rational numbers and the output of this function is the Gram matrix (over QQ). The computations are purely algebraic as the Minkowski inner product is simply the trace form. By default, this function does not check that the given field is totally real. To force a check, set "check" to True.
-    
+
     """
-    
+
     if check:
         if not K.is_totally_real():
             raise ValueError("Field passed to shape_of_a_totally_real_number_field is not totally real.")
-    
-    OK = K.maximal_order()
-    B = OK.basis()
-    if B[0] != 1:
-        B = _sub_one_into_basis(OK)
-    Bperp = []
-    for a in range(1, K.absolute_degree()):
-        Bperp.append(_perp(B[a]))
-    G = matrix(QQ, K.absolute_degree() - 1, K.absolute_degree() - 1)
-    for a in range(len(Bperp)):
-        for j in range(a, len(Bperp)):
-            G[a,j] = (Bperp[a] * Bperp[j]).trace()
-            if a != j:
-                G[j,a] = G[a,j]
-    return G
+    return trace_zero_form(K)
 
 def trace_zero_form(K):
     r"""
-    The projection of the trace zero form to the trace zero space, scaled so as to be integral.
+
+    INPUT:
+
+    - ``K`` -- a number field or an irreducible polynomial over the rationals
+
+    OUTPUT:
+
+    - The Gram matrix projection of the trace zero form to the trace zero space with the definition
+    that always gives an integral quadratic form.
     """
-    OK = K.maximal_order()
-    B = OK.basis()
-    if B[0] != 1:
-        B = _sub_one_into_basis(OK)
-    Bperp = []
-    for a in range(1, K.absolute_degree()):
-        Bperp.append(_perp(B[a]))
-    #G = matrix(ZZ, K.absolute_degree() - 1, K.absolute_degree() - 1)
-    return K.trace_pairing(Bperp)
+    if is_NumberField(K):
+        T2 = K.pari_nf()[4][3]
+    else: #assumes K is a polynomial over QQ or I guess anything that can be converted to pari and passed to nfinit
+        K = pari(K)
+        T2 = K.nfinit()[4][3]
+    G = gen_to_sage(T2)
+    return _gram_to_perp_gram(G)
+
+def _gram_to_perp_gram(G):
+    """
+    Input an nxn Gram matrix where the first row and column are assumed to correspond to the number 1
+    and output an (n-1)x(n-1) matrix that is the Gram matrix of the perps of the remaining elements.
+    """
+    n = G[0, 0]
+    Gperp = G.submatrix(1, 1)
+    for i in range(n-1):
+        for j in range(i, n-1):
+            Gperp[i,j] = n^2 * Gperp[i, j] - n * G[0, i+1] * G[0, j+1]
+    return Gperp
 
 def minkowski_vector(alpha, sigmas, taus):
     n = len(sigmas) + 2 * len(taus)
@@ -116,9 +123,9 @@ def _sub_one_into_basis(OK):
     1. This function receives such a basis and modifies it by substituting
     1 for one of the basis elements. The returned basis contains 1 as its
     first element.
-    
+
     """
-    
+    K = OK.fraction_field() #temporary
     B = []
     for v in OK.basis():
         B.append(v)
@@ -131,9 +138,9 @@ def _sub_one_into_basis(OK):
     if not sub_index is None:
         B[sub_index] = B[0]
         B[0] = OK.one()
-        #Debug test: print K.discriminant() == K.discriminant(B)
+        #assert(K.discriminant() == K.discriminant(B))
         return B
-    
+
     #Otherwise, more complicated
     found = False
     for i in range(len(w) - 1):
@@ -147,10 +154,10 @@ def _sub_one_into_basis(OK):
     if not found:    #This should never happen
         raise ValueError("You've given me a field whose integral basis \
                 cannot contain 1!")
-    
+
     companion = -y * B[i] + x * B[j]
     B[i] = B[0]
     B[j] = companion
     B[0] = OK.one()
-    #Debug test: print K.discriminant() == K.discriminant(B)
+    #assert(K.discriminant() == K.discriminant(B))
     return B
