@@ -1,26 +1,29 @@
 from sage.rings.number_field.number_field_base import is_NumberField
 from sage.libs.pari.convert_sage import gen_to_sage
 
-def shape_of_a_number_field(K, check = True, prec = 50):
+def shape_of_a_number_field(K, check = True):
     """
     Return the shape of the number field.
 
-    The shape of a number field of degree d is by definition the equivalence class of the (d-1)-dimensional lattice given by the orthogonal projection of the ring of integers of K onto the trace zero space (i.e. onto the orthogonal complement of 1) (equivalence means up to change of basis, orthogonal transformation, and homothety). The output of this function is the Gram matrix of the lattice. By default, this function checks if K is totally real or CM, in which cases it returns the Gram matrix over the rational numbers. Otherwise (or if check is set to False), a numerical approximation of the Gram matrix in RR is returned. In the latter case, the parameter prec is used for the precision of the real field. In order to provide a non-numerical answer in the general case, one would have to construct the normal closure (or at least the closure under complex conjugations). This is not practical at this time.
+    The shape of a number field of degree d is by definition the equivalence class of the (d-1)-dimensional lattice given by the orthogonal projection of the ring of integers of K onto the trace zero space (i.e. onto the orthogonal complement of 1) (equivalence means up to change of basis, orthogonal transformation, and homothety). The output of this function is the Gram matrix of the lattice. By default, this function checks if K is totally real in which case it returns the Gram matrix over the integers. Otherwise (or if check is set to False), the algebraic reals are used.
 
     """
 
     if K.absolute_degree() == 1:
-        return matrix(QQ, 0)
+        return matrix(ZZ, 0)
+
+    if K.absolute_degree() == 2:
+        return Matrix(ZZ, 1, [1])
 
     if check:
         if K.is_totally_real():
             return shape_of_a_totally_real_number_field(K)
-        try:
-            if K.is_CM():
-                return shape_of_a_CM_number_field(K)
-        except(AttributeError):    #temporary: only needed if trac #11770 has not been applied
-            if CM_field_functionality.is_CM(K):
-                return shape_of_a_CM_number_field(K)
+        #try:
+        #    if K.is_CM():
+        #        return shape_of_a_CM_number_field(K)
+        #except(AttributeError):    #temporary: only needed if trac #11770 has not been applied
+        #    if CM_field_functionality.is_CM(K):
+        #        return shape_of_a_CM_number_field(K)
 
     #Otherwise do it with AA and QQbar
     if K.is_relative():
