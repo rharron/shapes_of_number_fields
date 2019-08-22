@@ -30,7 +30,7 @@ def shape_of_a_number_field(K, check = True):
         KK = K.absolute_field(K.variable_names()[0] * 2)
     else:
         KK = K
-    B = [KK(aa) for aa in KK.pari_nf()[6]]
+    B = [KK(aa) for aa in KK.pari_zk()]
     Bperp = []
     for a in range(1, KK.absolute_degree()):
         Bperp.append(_perp(B[a]))
