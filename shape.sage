@@ -5,7 +5,9 @@ def shape_of_a_number_field(K, check = True):
     """
     Return the shape of the number field.
 
-    The shape of a number field of degree d is by definition the equivalence class of the (d-1)-dimensional lattice given by the orthogonal projection of the ring of integers of K onto the trace zero space (i.e. onto the orthogonal complement of 1) (equivalence means up to change of basis, orthogonal transformation, and homothety). The output of this function is the Gram matrix of the lattice. By default, this function checks if K is totally real in which case it returns the Gram matrix over the integers. Otherwise (or if check is set to False), the algebraic reals are used.
+    The shape of a number field of degree d is by definition the equivalence
+    class of the (d-1)-dimensional lattice given by the orthogonal projection of
+    the ring of integers of K onto the trace zero space (i.e. onto the orthogonal complement of 1) (equivalence means up to change of basis, orthogonal transformation, and homothety). The output of this function is the Gram matrix of the lattice. By default, this function checks if K is totally real in which case it returns the Gram matrix over the integers. Otherwise (or if check is set to False), the algebraic reals are used.
 
     """
 
@@ -34,8 +36,8 @@ def shape_of_a_number_field(K, check = True):
     Bperp = []
     for a in range(1, KK.absolute_degree()):
         Bperp.append(_perp(B[a]))
-    sigmas = list(K.embeddings(AA))
-    iotas = list(K.embeddings(QQbar))
+    sigmas = list(KK.embeddings(AA))
+    iotas = list(KK.embeddings(QQbar))
     taus = []
     while len(iotas) > 0:
         iota = iotas.pop()
@@ -88,6 +90,16 @@ def trace_zero_form(K):
     G = gen_to_sage(T2)
     return _gram_to_perp_gram(G)
 
+def unit_shape(K, algorithm='pari'):
+    """
+    pari is much, much faster. the other option for algorithm is 'sage'
+    """
+    if algorithm == 'pari':
+        return unit_shape_pari(K)
+    elif algorith == 'sage':
+        return unit_shape_sage(K)
+    raise ValueError("Parameter algorithm in unit_shape must be either \'pari\' or \'sage\'.")
+
 def _gram_to_perp_gram(G):
     """
     Input an nxn Gram matrix where the first row and column are assumed to correspond to the number 1
@@ -106,6 +118,41 @@ def minkowski_vector(alpha, sigmas, taus):
     n = len(sigmas) + 2 * len(taus)
     V = AA^n
     return V([sigma(alpha) for sigma in sigmas] + sum([[tau(alpha).real(), tau(alpha).imag()] for tau in taus], []))
+
+def multiplicative_minkowski_vector(u, sigmas, taus):
+    m = len(sigmas) + len(taus)
+    v = [sigma(u).abs().log() for sigma in sigmas] + [(tau(u).abs()^2).log() for tau in taus]
+    return (RR^m)(v)
+
+def unit_shape_sage(K):
+    us = K.units(proof=False)
+    sigmas = list(K.embeddings(RR))
+    iotas = list(K.embeddings(CC))
+    r = len(us)
+    taus = []
+    while len(iotas) > 0:
+        iota = iotas.pop()
+        aa = iota.im_gens()[0]
+        if aa.imag() == 0:
+            continue
+        taus.append(iota)
+        aaconj = aa.conjugate()
+        for iota2 in iotas:
+            if iota2.im_gens()[0] == aaconj:
+                iotas.remove(iota2)
+                break
+    B = [multiplicative_minkowski_vector(u, sigmas, taus) for u in us]
+    return Matrix(RR, r, [[u.dot_product(v) for v in B] for u in B])
+
+def unit_shape_pari(K):
+    r1, r2 = K.signature()
+    r = r1 + r2 -1
+    bnf = K.pari_bnf(units=False)
+    UL = [[bnf[2][j][i].sage().real() for i in range(r+1)] for j in range(r)]
+    RR = UL[0][0].parent()
+    V = RR^(r+1)
+    UL = [V(UL[i]) for i in range(r)]
+    return Matrix(RR, r, [u.dot_product(v) for u in UL for v in UL])
 
 def _perp(alpha):
     """
